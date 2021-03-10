@@ -9,7 +9,10 @@ class PriceScreen extends StatefulWidget {
 }
 
 class _PriceScreenState extends State<PriceScreen> {
-  String selectedCurrency = 'USD';
+  String rate = '?';
+  String currentCrypto = 'BTC';
+  String selectedCurrency = currenciesList.first;
+  CoinData coinData = CoinData();
 
   Widget getAndroidDropDown() {
     List<DropdownMenuItem<String>> list = [];
@@ -22,8 +25,11 @@ class _PriceScreenState extends State<PriceScreen> {
     return DropdownButton<String>(
       value: selectedCurrency,
       items: list,
-      onChanged: (value) {
-        selectedCurrency = value;
+      onChanged: (value) async {
+        setState(() {
+          selectedCurrency = value;
+        });
+        updateUI();
       },
     );
   }
@@ -37,11 +43,33 @@ class _PriceScreenState extends State<PriceScreen> {
     return CupertinoPicker(
       itemExtent: 32.0,
       // backgroundColor: Colors.lightBlue,
-      onSelectedItemChanged: (int value) {
-        selectedCurrency = currenciesList[value];
+      onSelectedItemChanged: (int value) async {
+        setState(() {
+          selectedCurrency = currenciesList[value];
+        });
+        updateUI();
       },
+      looping: true,
       children: list,
     );
+  }
+
+  void updateUI() async {
+    var rateData =
+        await coinData.getCoinData(from: currentCrypto, to: selectedCurrency);
+    setState(() {
+      if (rateData != null) {
+        double value = rateData['rate'];
+        rate = value.toInt().toString();
+      } else
+        rate = 'error';
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    updateUI();
   }
 
   @override
@@ -65,7 +93,7 @@ class _PriceScreenState extends State<PriceScreen> {
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
                 child: Text(
-                  '1 BTC = ? USD',
+                  '1 $currentCrypto = $rate $selectedCurrency',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 20.0,
