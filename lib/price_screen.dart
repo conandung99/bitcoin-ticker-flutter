@@ -9,9 +9,16 @@ class PriceScreen extends StatefulWidget {
 }
 
 class _PriceScreenState extends State<PriceScreen> {
-  String rate = '?';
-  String currentCrypto = 'BTC';
+  bool isWaiting = true;
   String selectedCurrency = currenciesList.first;
+  Map<String, String> exchangeRate = {};
+
+  void initMap() {
+    for (String crypto in cryptoList) {
+      exchangeRate.addAll({crypto: '?'});
+    }
+  }
+
   CoinData coinData = CoinData();
 
   Widget getAndroidDropDown() {
@@ -46,6 +53,9 @@ class _PriceScreenState extends State<PriceScreen> {
       onSelectedItemChanged: (int value) async {
         setState(() {
           selectedCurrency = currenciesList[value];
+          for (String crypto in cryptoList) {
+            exchangeRate[crypto] = '?';
+          }
         });
         updateUI();
       },
@@ -55,20 +65,37 @@ class _PriceScreenState extends State<PriceScreen> {
   }
 
   void updateUI() async {
-    var rateData =
-        await coinData.getCoinData(from: currentCrypto, to: selectedCurrency);
-    setState(() {
+    for (String crypto in cryptoList) {
+      String rate = '?';
+      var rateData =
+          await coinData.getCoinData(from: crypto, to: selectedCurrency);
       if (rateData != null) {
         double value = rateData['rate'];
         rate = value.toInt().toString();
       } else
         rate = 'error';
-    });
+      exchangeRate[crypto] = rate;
+    }
+    setState(() => isWaiting = false);
+  }
+
+  List<Widget> makeCard() {
+    List<Widget> list = [];
+    for (String crypto in cryptoList) {
+      list.add(
+        CoinCard(
+            currentCrypto: crypto,
+            rate: isWaiting ? '?' : exchangeRate[crypto],
+            selectedCurrency: selectedCurrency),
+      );
+    }
+    return list;
   }
 
   @override
   void initState() {
     super.initState();
+    initMap();
     updateUI();
   }
 
@@ -84,23 +111,8 @@ class _PriceScreenState extends State<PriceScreen> {
         children: <Widget>[
           Padding(
             padding: EdgeInsets.fromLTRB(18.0, 18.0, 18.0, 0),
-            child: Card(
-              color: Colors.lightBlueAccent,
-              elevation: 5.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
-                child: Text(
-                  '1 $currentCrypto = $rate $selectedCurrency',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+            child: Column(
+              children: makeCard(),
             ),
           ),
           Container(
@@ -111,6 +123,41 @@ class _PriceScreenState extends State<PriceScreen> {
             child: Platform.isIOS ? getIosPicker() : getAndroidDropDown(),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class CoinCard extends StatelessWidget {
+  const CoinCard({
+    Key key,
+    @required this.currentCrypto,
+    @required this.rate,
+    @required this.selectedCurrency,
+  }) : super(key: key);
+
+  final String currentCrypto;
+  final String rate;
+  final String selectedCurrency;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.lightBlueAccent,
+      elevation: 5.0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
+        child: Text(
+          '1 $currentCrypto = $rate $selectedCurrency',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 20.0,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
